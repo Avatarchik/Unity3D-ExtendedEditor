@@ -275,8 +275,7 @@ public class ExtendedInputV2 {
                 mouseOffset.x = currentWindow.Editor.position.x + currentWindow.Position.x;
                 mouseOffset.y = currentWindow.Editor.position.y + currentWindow.Position.y;
 
-                if (currentWindow.WindowStyle != null ) {
-                    //mouseOffset.y += 0; // This is the offset value for the default style that windows are drawn with
+                if ( currentWindow.WindowStyle != null ) {
                     mouseOffset.y += ( currentWindow.WindowStyle.border.top + currentWindow.WindowStyle.padding.top ) / 2;
                 }
             }
@@ -309,6 +308,8 @@ public class ExtendedInputV2 {
                 int code = Marshal.ReadInt32( lParam );
                 Keys keycode = (Keys)code;
                 SetValue( keycode, true );
+
+                //UnityEngine.Debug.Log( "weho" );
 
                 if ( keycode == Keys.LeftShift || keycode == Keys.RightShift ) {
                     SetValue( Keys.Shift, true );
@@ -371,6 +372,7 @@ public class ExtendedInputV2 {
     }
 
     private static bool isHooked = false;
+    private static int hookCount = 0;
     private static bool isCompiling = false;
 
     private static Dictionary<Keys, State<bool>> kStates = new Dictionary<Keys, State<bool>>();
@@ -382,23 +384,36 @@ public class ExtendedInputV2 {
 
             kHook = SetKeyboardHook( proc );
             mHook = SetMouseHook( proc );
+
+            isHooked = true;
+        } else {
+            // Ensure it is always after editor windows
+            EditorApplication.update -= Update;
+            EditorApplication.update += Update;
         }
+
+        hookCount++;
     }
 
-    public static void Unhook() {
-        UnityEngine.Debug.LogWarning( "Unhooking" );
-        EditorApplication.update -= Update;
+    public static void Unhook( bool force = false ) {
+        hookCount--;
 
-        isHooked = false;
-        isCompiling = false;
+        if ( hookCount == 0 || force ) {
+            UnityEngine.Debug.LogWarning( "Unhooking" );
+            EditorApplication.update -= Update;
 
-        UnhookWindowsHookEx( kHook );
-        UnhookWindowsHookEx( mHook );
+            isHooked = false;
+            isCompiling = false;
+            hookCount = 0;
+
+            UnhookWindowsHookEx( kHook );
+            UnhookWindowsHookEx( mHook );
+        }
     }
 
     private static void Update() {
         if ( !isCompiling && EditorApplication.isCompiling ) {
-            Unhook();
+            Unhook( true );
             return;
         }
         isCompiling = EditorApplication.isCompiling;

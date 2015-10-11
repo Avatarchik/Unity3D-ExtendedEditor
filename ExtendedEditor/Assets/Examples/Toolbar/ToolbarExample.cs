@@ -38,18 +38,6 @@ public class ToolbarExample : ExtendedEditor {
 
             WindowStyle = ExtendedGUI.DarkNoneWindowStyle;
             Settings.DrawToolbar = true;
-            ExtendedInputV2.Hook();
-        }
-
-        public override void OnDestroy() {
-            base.OnDestroy();
-            ExtendedInputV2.Unhook();
-        }
-
-        void keydown( ExtendedInputV2.Keys key ) {
-            if ( ExtendedInputV2.KeyPressed( key ) ) {
-                Debug.Log( key );
-            }
         }
 
         public override void OnToolbarGUI() {

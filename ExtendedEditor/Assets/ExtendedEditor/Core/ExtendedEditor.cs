@@ -83,6 +83,7 @@ namespace TNRD.Editor.Core {
 
             SharedAssets = new ExtendedAssets( this );
             Input = new ExtendedInput();
+            ExtendedInputV2.Hook();
 
             Windows = new List<ExtendedWindow>();
             windowsToProcess = new List<ExtendedWindow>();
@@ -107,6 +108,8 @@ namespace TNRD.Editor.Core {
             for ( int i = Windows.Count - 1; i >= 0; i-- ) {
                 Windows[i].OnDestroy();
             }
+
+            ExtendedInputV2.Unhook();
         }
 
         /// <summary>
@@ -143,6 +146,7 @@ namespace TNRD.Editor.Core {
             var hasFocus = focusedWindow == this;
 
             for ( int i = Windows.Count - 1; i >= 0; i-- ) {
+                ExtendedInputV2.SetCurrentWindow( Windows[i] );
                 Windows[i].Update( hasFocus && modalWindow == null );
 
                 if ( Windows[i].Settings.IsBlocking ) {
