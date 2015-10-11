@@ -97,7 +97,7 @@ namespace TNRD.Editor.Core {
         }
 
         private struct KeyboardShortcut {
-            public KeyCode Key;
+            public ExtendedInputV2.Keys Key;
             public Action Callback;
             public bool Control;
             public bool Alt;
@@ -424,6 +424,17 @@ namespace TNRD.Editor.Core {
                         Camera.y -= ( cameraSpeed * ( 1f / Camera.z ) ) * Editor.DeltaTime;
                     }
                 }
+
+                var shortcuts = new List<KeyboardShortcut>( keyboardShortcuts );
+                foreach ( var item in shortcuts ) {
+                    if ( item.Control != ExtendedInputV2.KeyDown( ExtendedInputV2.Keys.Control ) ) continue;
+                    if ( item.Alt != ExtendedInputV2.KeyDown( ExtendedInputV2.Keys.Alt ) ) continue;
+                    if ( item.Shift != ExtendedInputV2.KeyDown( ExtendedInputV2.Keys.Shift ) ) continue;
+
+                    if ( ExtendedInputV2.KeyReleased( item.Key ) ) {
+                        item.Callback.Invoke();
+                    }
+                }
             }
 
             Input.Update();
@@ -680,16 +691,7 @@ namespace TNRD.Editor.Core {
                 }
             }
 
-            var shortcuts = new List<KeyboardShortcut>( keyboardShortcuts );
-            foreach ( var item in shortcuts ) {
-                if ( item.Control != Input.KeysDown( KeyCode.LeftControl, KeyCode.RightControl ) ) continue;
-                if ( item.Alt != Input.KeysDown( KeyCode.LeftAlt, KeyCode.RightAlt ) ) continue;
-                if ( item.Shift != Input.KeysDown( KeyCode.LeftShift, KeyCode.RightShift ) ) continue;
-
-                if ( Input.KeyReleased( item.Key ) ) {
-                    item.Callback.Invoke();
-                }
-            }
+            
         }
         #endregion
 
@@ -929,7 +931,7 @@ namespace TNRD.Editor.Core {
         /// <param name="control">Is control a modifier for this shortcut</param>
         /// <param name="alt">Is alt a modifier for this shortcut</param>
         /// <param name="shift">Is shift a modifier for this shortcut</param>
-        public void AddShortcut( KeyCode key, Action callback, bool control, bool alt, bool shift ) {
+        public void AddShortcut( ExtendedInputV2.Keys key, Action callback, bool control, bool alt, bool shift ) {
             keyboardShortcuts.Add(
                 new KeyboardShortcut() {
                     Key = key,
@@ -944,7 +946,7 @@ namespace TNRD.Editor.Core {
         /// Removes registered shortcuts based on the main key
         /// </summary>
         /// <param name="key">The main key for shortcuts</param>
-        public void RemoveShortcut( KeyCode key ) {
+        public void RemoveShortcut( ExtendedInputV2.Keys key ) {
             foreach ( var item in keyboardShortcuts ) {
                 if ( item.Key == key ) {
                     keyboardShortcuts.Remove( item );
@@ -973,7 +975,7 @@ namespace TNRD.Editor.Core {
         /// <param name="control">Is control a modifier for this shortcut</param>
         /// <param name="alt">Is alt a modifier for this shortcut</param>
         /// <param name="shift">Is shift a modifier for this shortcut</param>
-        public void RemoveShortcut( KeyCode key, bool control, bool alt, bool shift ) {
+        public void RemoveShortcut( ExtendedInputV2.Keys key, bool control, bool alt, bool shift ) {
             foreach ( var item in keyboardShortcuts ) {
                 if ( item.Key == key && item.Control == control && item.Alt == alt && item.Shift == shift ) {
                     keyboardShortcuts.Remove( item );
@@ -990,7 +992,7 @@ namespace TNRD.Editor.Core {
         /// <param name="control">Is control a modifier for this shortcut</param>
         /// <param name="alt">Is alt a modifier for this shortcut</param>
         /// <param name="shift">Is shift a modifier for this shortcut</param>
-        public void RemoveShortcut( KeyCode key, Action callback, bool control, bool alt, bool shift ) {
+        public void RemoveShortcut( ExtendedInputV2.Keys key, Action callback, bool control, bool alt, bool shift ) {
             foreach ( var item in keyboardShortcuts ) {
                 if ( item.Key == key && item.Callback == callback && item.Control == control && item.Alt == alt && item.Shift == shift ) {
                     keyboardShortcuts.Remove( item );

@@ -19,10 +19,11 @@ public class NotificationsAndShortcutsExample : ExtendedEditor {
     private class NotShortWindow : ExtendedWindow {
 
         public NotShortWindow() : base() {
-            AddShortcut( KeyCode.H, FirstCallback, true, false, false );
-            AddShortcut( KeyCode.H, SecondCallback, false, true, false );
-            AddShortcut( KeyCode.H, ThirdCallback, false, false, true );
-            AddShortcut( KeyCode.H, FourthCallback, true, false, true );
+            AddShortcut( ExtendedInputV2.Keys.H, FirstCallback, true, false, false );
+            AddShortcut( ExtendedInputV2.Keys.H, SecondCallback, false, true, false );
+            AddShortcut( ExtendedInputV2.Keys.H, ThirdCallback, false, false, true );
+            AddShortcut( ExtendedInputV2.Keys.H, FourthCallback, true, false, true );
+            AddShortcut( ExtendedInputV2.Keys.H, FifthCallback, true, true, true );
         }
 
         private void FirstCallback() {
@@ -41,10 +42,14 @@ public class NotificationsAndShortcutsExample : ExtendedEditor {
             ShowErrorNotification( "(Error) Callback on Ctrl+Shift+H" );
         }
 
+        private void FifthCallback() {
+            ShowErrorNotification( "(Error) Callback on Ctrl+Alt+Shift+H" );
+        }
+
         public override void OnGUI() {
             base.OnGUI();
 
-            EditorGUILayout.LabelField( "The following key-combo's show a notification: \nCtrl+H \nAlt+H \nShift+H \nCtrl+Shift+H", GUILayout.ExpandHeight( true ) );
+            EditorGUILayout.LabelField( "The following key-combo's show a notification: \nCtrl+H \nAlt+H \nShift+H \nCtrl+Shift+H \nCtrl+Alt+Shift+H", GUILayout.ExpandHeight( true ) );
         }
     }
 }
