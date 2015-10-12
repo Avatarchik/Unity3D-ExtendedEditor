@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using TNRD;
 using TNRD.Editor.Core;
@@ -200,17 +198,23 @@ public class ExtendedInputV2 {
         //Modifiers = -65536,
     }
     public enum Buttons {
-        Left,
-        Middle,
-        Right,
+        Left = 1,
+        Right = 2,
+        Middle = 4,
     }
     #endregion
 
+    // Struct used for the mouse position
+    [StructLayout( LayoutKind.Sequential )]
+    private struct Point {
+        public int X;
+        public int Y;
+    }
+
+    [DllImport( "user32.dll", CharSet = CharSet.Auto, SetLastError = true )]
+    private static extern bool GetCursorPos( out Point lpPoint );
     [DllImport( "user32.dll", CharSet = CharSet.Auto, SetLastError = true )]
     private static extern short GetKeyState( int vKeyCode );
-
-    private const short keyDown = -128;
-    private const short keyUp = 0;
 
     private static ExtendedWindow currentWindow = null;
     private static Vector2 mousePosition = new Vector2();
@@ -225,7 +229,17 @@ public class ExtendedInputV2 {
                 if ( currentWindow.WindowStyle != null ) {
                     mouseOffset.y += ( currentWindow.WindowStyle.border.top + currentWindow.WindowStyle.padding.top ) / 2;
                 }
+
+                mouseOffset.x = Mathf.Round( mouseOffset.x );
+                mouseOffset.y = Mathf.Round( mouseOffset.y );
             }
+
+            Point point;
+            if ( GetCursorPos( out point ) ) {
+                mousePosition.x = point.X;
+                mousePosition.y = point.Y;
+            }
+
             return mousePosition - mouseOffset;
         }
     }
@@ -235,10 +249,11 @@ public class ExtendedInputV2 {
     private static bool isCompiling = false;
 
     private static Dictionary<Keys, State<bool>> kStates = new Dictionary<Keys, State<bool>>();
+    private static Dictionary<Buttons, State<bool>> mStates = new Dictionary<Buttons, State<bool>>();
 
     public static void Hook() {
         if ( !isHooked ) {
-            UnityEngine.Debug.LogWarning( "Hooking" );
+            Debug.LogWarning( "Hooking" );
             EditorApplication.update += Update;
             isHooked = true;
         } else {
@@ -254,19 +269,13 @@ public class ExtendedInputV2 {
         hookCount--;
 
         if ( hookCount == 0 || force ) {
-            UnityEngine.Debug.LogWarning( "Unhooking" );
+            Debug.LogWarning( "Unhooking" );
             EditorApplication.update -= Update;
             kStates.Clear();
 
             isHooked = false;
             isCompiling = false;
             hookCount = 0;
-        }
-    }
-
-    private static void RegisterKey( Keys key ) {
-        if ( !kStates.ContainsKey( key ) ) {
-            kStates.Add( key, new State<bool>() );
         }
     }
 
@@ -283,13 +292,65 @@ public class ExtendedInputV2 {
             value.Update( ( GetKeyState( (int)item.Key ) & 0x8000 ) != 0 );
             kStates[item.Key] = value;
         }
+
+        var mCopy = new Dictionary<Buttons, State<bool>>( mStates );
+        foreach ( var item in mCopy ) {
+            var value = mCopy[item.Key];
+            // Cheeky cheeky mouse buttons use the same check :o
+            value.Update( ( GetKeyState( (int)item.Key ) & 0x8000 ) != 0 );
+            mStates[item.Key] = value;
+        }
     }
 
-    private static void SetValue( Buttons button, bool value ) {
+    private static void RegisterKey( Keys key ) {
+        if ( !kStates.ContainsKey( key ) ) {
+            kStates.Add( key, new State<bool>() );
+        }
+    }
 
+    private static void RegisterButton( Buttons button ) {
+        if ( !mStates.ContainsKey( button ) ) {
+            mStates.Add( button, new State<bool>() );
+        }
     }
 
     #region Checks
+    /// <summary>
+    /// Did the given mouse button get pressed this frame
+    /// </summary>
+    /// <param name="button">the mouse button to check</param>
+    public static bool ButtonPressed( Buttons button ) {
+        RegisterButton( button );
+        return mStates[button].IsPressed();
+    }
+
+    /// <summary>
+    /// Did the given mouse button get released this frame
+    /// </summary>
+    /// <param name="button">the mouse button to check</param>
+    public static bool ButtonReleased( Buttons button ) {
+        RegisterButton( button );
+        return mStates[button].IsReleased();
+    }
+
+    /// <summary>
+    /// Is the given mouse button down
+    /// </summary>
+    /// <param name="button">the mouse button to check</param>
+    public static bool ButtonDown( Buttons button ) {
+        RegisterButton( button );
+        return mStates[button].IsDown();
+    }
+
+    /// <summary>
+    /// Is the given mouse button up
+    /// </summary>
+    /// <param name="button">the mouse button to check</param>
+    public static bool ButtonUp( Buttons button ) {
+        RegisterButton( button );
+        return mStates[button].IsUp();
+    }
+
     /// <summary>
     /// Did the given key get pressed this frame
     /// </summary>
