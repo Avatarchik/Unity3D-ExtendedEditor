@@ -427,9 +427,9 @@ namespace TNRD.Editor.Core {
 
                 var shortcuts = new List<KeyboardShortcut>( keyboardShortcuts );
                 foreach ( var item in shortcuts ) {
-                    if ( item.Control != ExtendedInputV2.KeyDown( ExtendedInputV2.Keys.Control ) ) continue;
-                    if ( item.Alt != ExtendedInputV2.KeyDown( ExtendedInputV2.Keys.Alt ) ) continue;
-                    if ( item.Shift != ExtendedInputV2.KeyDown( ExtendedInputV2.Keys.Shift ) ) continue;
+                    if ( item.Control != ExtendedInputV2.KeyDown( ExtendedInputV2.Keys.LeftControl, ExtendedInputV2.Keys.RightControl ) ) continue;
+                    if ( item.Alt != ExtendedInputV2.KeyDown( ExtendedInputV2.Keys.LeftAlt, ExtendedInputV2.Keys.RightAlt ) ) continue;
+                    if ( item.Shift != ExtendedInputV2.KeyDown( ExtendedInputV2.Keys.LeftShift, ExtendedInputV2.Keys.RightShift ) ) continue;
 
                     if ( ExtendedInputV2.KeyReleased( item.Key ) ) {
                         item.Callback.Invoke();
@@ -691,7 +691,7 @@ namespace TNRD.Editor.Core {
                 }
             }
 
-            
+
         }
         #endregion
 

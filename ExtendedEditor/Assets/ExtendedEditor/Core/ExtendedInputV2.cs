@@ -193,10 +193,10 @@ public class ExtendedInputV2 {
         //Pa1 = 253,
         //OemClear = 254,
         //KeyCode = 65535,
-        Shift = 65536,
-        Control = 131072,
-        Alt = 262144,
-        Windows = 524288,
+        //Shift = 65536,
+        //Control = 131072,
+        //Alt = 262144,
+        //Windows = 524288,
         //Modifiers = -65536,
     }
     public enum Buttons {
@@ -206,64 +206,11 @@ public class ExtendedInputV2 {
     }
     #endregion
 
-    #region DLL Imports
     [DllImport( "user32.dll", CharSet = CharSet.Auto, SetLastError = true )]
-    private static extern IntPtr SetWindowsHookEx( int idHook, Proc lpfn, IntPtr hMod, uint dwThreadId );
+    private static extern short GetKeyState( int vKeyCode );
 
-    [DllImport( "user32.dll", CharSet = CharSet.Auto, SetLastError = true )]
-    [return: MarshalAs( UnmanagedType.Bool )]
-    private static extern bool UnhookWindowsHookEx( IntPtr hhk );
-
-    [DllImport( "user32.dll", CharSet = CharSet.Auto, SetLastError = true )]
-    private static extern IntPtr CallNextHookEx( IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam );
-
-    [DllImport( "kernel32.dll", CharSet = CharSet.Auto, SetLastError = true )]
-    private static extern IntPtr GetModuleHandle( string lpModuleName );
-    #endregion
-
-    #region Strutcs
-    [StructLayout( LayoutKind.Sequential )]
-    private struct Point {
-        public int x;
-        public int y;
-    }
-
-    [StructLayout( LayoutKind.Sequential )]
-    private struct MSLLHookStruct {
-        public Point pt;
-        public uint mouseData;
-        public uint flags;
-        public uint time;
-        public IntPtr dwExtraInfo;
-    }
-    #endregion
-
-    #region Vars
-
-    #region Keyboard
-    private const int WH_KEYBOARD = 13;
-    private const int WM_KEYDOWN = 0x0100;
-    private const int WM_KEYUP = 0x0101;
-    private const int WM_SYSKEYDOWN = 0x0104;
-    private const int WM_SYSKEYUP = 0x0105;
-    #endregion
-    #region Mouse
-    private const int WH_MOUSE = 14;
-    private const int WM_MOUSEMOVE = 0x200;
-    private const int WM_LBUTTONDOWN = 0x201;
-    private const int WM_LBUTTONUP = 0x202;
-    private const int WM_LBUTTONDBLCLK = 0x203;
-    private const int WM_RBUTTONDOWN = 0x204;
-    private const int WM_RBUTTONUP = 0x205;
-    private const int WM_RBUTTONDBLCLK = 0x206;
-    private const int WM_MBUTTONDOWN = 0x207;
-    private const int WM_MBUTTONUP = 0x208;
-    #endregion
-
-    private static Proc proc = HookCallback;
-    private static IntPtr kHook = IntPtr.Zero;
-    private static IntPtr mHook = IntPtr.Zero;
-    #endregion
+    private const short keyDown = -128;
+    private const short keyUp = 0;
 
     private static ExtendedWindow currentWindow = null;
     private static Vector2 mousePosition = new Vector2();
@@ -283,94 +230,6 @@ public class ExtendedInputV2 {
         }
     }
 
-    #region Meths
-    private static IntPtr SetMouseHook( Proc proc ) {
-        using ( Process curProcess = Process.GetCurrentProcess() ) {
-            using ( ProcessModule curModule = curProcess.MainModule ) {
-                return SetWindowsHookEx( WH_MOUSE, proc, GetModuleHandle( curModule.ModuleName ), 0 );
-            }
-        }
-    }
-
-    private static IntPtr SetKeyboardHook( Proc proc ) {
-        using ( Process curProcess = Process.GetCurrentProcess() ) {
-            using ( ProcessModule curModule = curProcess.MainModule ) {
-                return SetWindowsHookEx( WH_KEYBOARD, proc, GetModuleHandle( curModule.ModuleName ), 0 );
-            }
-        }
-    }
-
-    private delegate IntPtr Proc( int nCode, IntPtr wParam, IntPtr lParam );
-
-    private static IntPtr HookCallback( int nCode, IntPtr wParam, IntPtr lParam ) {
-        if ( nCode >= 0 ) {
-            if ( wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN ) {
-                int code = Marshal.ReadInt32( lParam );
-                Keys keycode = (Keys)code;
-                SetValue( keycode, true );
-
-                //UnityEngine.Debug.Log( "weho" );
-
-                if ( keycode == Keys.LeftShift || keycode == Keys.RightShift ) {
-                    SetValue( Keys.Shift, true );
-                } else if ( keycode == Keys.LeftControl || keycode == Keys.RightControl ) {
-                    SetValue( Keys.Control, true );
-                } else if ( keycode == Keys.LeftWindows || keycode == Keys.RightWindows ) {
-                    SetValue( Keys.Windows, true );
-                } else if ( keycode == Keys.LeftAlt || keycode == Keys.RightAlt ) {
-                    SetValue( Keys.Alt, true );
-                }
-            } else if ( wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP ) {
-                int code = Marshal.ReadInt32( lParam );
-                Keys keycode = (Keys)code;
-                SetValue( keycode, false );
-
-                if ( keycode == Keys.LeftShift || keycode == Keys.RightShift ) {
-                    SetValue( Keys.Shift, false );
-                } else if ( keycode == Keys.LeftControl || keycode == Keys.RightControl ) {
-                    SetValue( Keys.Control, false );
-                } else if ( keycode == Keys.LeftWindows || keycode == Keys.RightWindows ) {
-                    SetValue( Keys.Windows, false );
-                } else if ( keycode == Keys.LeftAlt || keycode == Keys.RightAlt ) {
-                    SetValue( Keys.Alt, false );
-                }
-            } else if ( wParam == (IntPtr)WM_LBUTTONDOWN ) {
-                SetValue( Buttons.Left, true );
-                SetMousePosition( lParam );
-            } else if ( wParam == (IntPtr)WM_LBUTTONUP ) {
-                SetValue( Buttons.Left, false );
-                SetMousePosition( lParam );
-            } else if ( wParam == (IntPtr)WM_LBUTTONDBLCLK ) {
-                SetMousePosition( lParam );
-            } else if ( wParam == (IntPtr)WM_MBUTTONDOWN ) {
-                SetValue( Buttons.Middle, true );
-                SetMousePosition( lParam );
-            } else if ( wParam == (IntPtr)WM_MBUTTONUP ) {
-                SetValue( Buttons.Middle, false );
-                SetMousePosition( lParam );
-            } else if ( wParam == (IntPtr)WM_RBUTTONDOWN ) {
-                SetValue( Buttons.Right, true );
-                SetMousePosition( lParam );
-            } else if ( wParam == (IntPtr)WM_RBUTTONUP ) {
-                SetValue( Buttons.Right, false );
-                SetMousePosition( lParam );
-            } else if ( wParam == (IntPtr)WM_RBUTTONDBLCLK ) {
-                SetMousePosition( lParam );
-            } else if ( wParam == (IntPtr)WM_MOUSEMOVE ) {
-                SetMousePosition( lParam );
-            }
-        }
-
-        return CallNextHookEx( kHook, nCode, wParam, lParam );
-    }
-    #endregion
-
-    private static void SetMousePosition( IntPtr param ) {
-        MSLLHookStruct data = (MSLLHookStruct)Marshal.PtrToStructure( param, typeof( MSLLHookStruct ) );
-        mousePosition.x = data.pt.x;
-        mousePosition.y = data.pt.y;
-    }
-
     private static bool isHooked = false;
     private static int hookCount = 0;
     private static bool isCompiling = false;
@@ -381,10 +240,6 @@ public class ExtendedInputV2 {
         if ( !isHooked ) {
             UnityEngine.Debug.LogWarning( "Hooking" );
             EditorApplication.update += Update;
-
-            kHook = SetKeyboardHook( proc );
-            mHook = SetMouseHook( proc );
-
             isHooked = true;
         } else {
             // Ensure it is always after editor windows
@@ -401,13 +256,17 @@ public class ExtendedInputV2 {
         if ( hookCount == 0 || force ) {
             UnityEngine.Debug.LogWarning( "Unhooking" );
             EditorApplication.update -= Update;
+            kStates.Clear();
 
             isHooked = false;
             isCompiling = false;
             hookCount = 0;
+        }
+    }
 
-            UnhookWindowsHookEx( kHook );
-            UnhookWindowsHookEx( mHook );
+    private static void RegisterKey( Keys key ) {
+        if ( !kStates.ContainsKey( key ) ) {
+            kStates.Add( key, new State<bool>() );
         }
     }
 
@@ -421,31 +280,22 @@ public class ExtendedInputV2 {
         var kCopy = new Dictionary<Keys, State<bool>>( kStates );
         foreach ( var item in kCopy ) {
             var value = kCopy[item.Key];
-            value.Update();
+            value.Update( ( GetKeyState( (int)item.Key ) & 0x8000 ) != 0 );
             kStates[item.Key] = value;
         }
-    }
-
-    private static void SetValue( Keys key, bool value ) {
-        if ( !kStates.ContainsKey( key ) ) {
-            kStates.Add( key, new State<bool>() );
-        }
-
-        var state = kStates[key];
-        state.Current = value;
-        kStates[key] = state;
     }
 
     private static void SetValue( Buttons button, bool value ) {
 
     }
 
+    #region Checks
     /// <summary>
     /// Did the given key get pressed this frame
     /// </summary>
     /// <param name="key">the key to check</param>
     public static bool KeyPressed( Keys key ) {
-        if ( !kStates.ContainsKey( key ) ) return false;
+        RegisterKey( key );
         return kStates[key].IsPressed();
     }
 
@@ -455,10 +305,9 @@ public class ExtendedInputV2 {
     /// <param name="keys">the keys to check</param>
     public static bool KeyPressed( params Keys[] keys ) {
         foreach ( var key in keys ) {
-            if ( kStates.ContainsKey( key ) ) {
-                if ( kStates[key].IsPressed() ) {
-                    return true;
-                }
+            RegisterKey( key );
+            if ( kStates[key].IsPressed() ) {
+                return true;
             }
         }
         return false;
@@ -470,7 +319,7 @@ public class ExtendedInputV2 {
     /// <param name="keys">the keys to check</param>
     public static bool KeysPressed( params Keys[] keys ) {
         foreach ( var key in keys ) {
-            if ( !kStates.ContainsKey( key ) ) return false;
+            RegisterKey( key );
             if ( !kStates[key].IsPressed() ) return false;
         }
         return true;
@@ -481,7 +330,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="key">the key to check</param>
     public static bool KeyReleased( Keys key ) {
-        if ( !kStates.ContainsKey( key ) ) return false;
+        RegisterKey( key );
         return kStates[key].IsReleased();
     }
 
@@ -491,10 +340,9 @@ public class ExtendedInputV2 {
     /// <param name="keys">the keys to check</param>
     public static bool KeyReleased( params Keys[] keys ) {
         foreach ( var key in keys ) {
-            if ( kStates.ContainsKey( key ) ) {
-                if ( kStates[key].IsReleased() ) {
-                    return true;
-                }
+            RegisterKey( key );
+            if ( kStates[key].IsReleased() ) {
+                return true;
             }
         }
         return false;
@@ -506,7 +354,7 @@ public class ExtendedInputV2 {
     /// <param name="keys">the keys to check</param>
     public static bool KeysReleased( params Keys[] keys ) {
         foreach ( var key in keys ) {
-            if ( !kStates.ContainsKey( key ) ) return false;
+            RegisterKey( key );
             if ( !kStates[key].IsReleased() ) return false;
         }
         return true;
@@ -517,7 +365,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="key">the key to check</param>
     public static bool KeyDown( Keys key ) {
-        if ( !kStates.ContainsKey( key ) ) return false;
+        RegisterKey( key );
         return kStates[key].IsDown();
     }
 
@@ -527,10 +375,9 @@ public class ExtendedInputV2 {
     /// <param name="keys">the keys to check</param>
     public static bool KeyDown( params Keys[] keys ) {
         foreach ( var key in keys ) {
-            if ( kStates.ContainsKey( key ) ) {
-                if ( kStates[key].IsDown() ) {
-                    return true;
-                }
+            RegisterKey( key );
+            if ( kStates[key].IsDown() ) {
+                return true;
             }
         }
         return false;
@@ -542,7 +389,7 @@ public class ExtendedInputV2 {
     /// <param name="keys">the keys to check</param>
     public static bool KeysDown( params Keys[] keys ) {
         foreach ( var key in keys ) {
-            if ( !kStates.ContainsKey( key ) ) return false;
+            RegisterKey( key );
             if ( !kStates[key].IsDown() ) return false;
         }
         return true;
@@ -553,7 +400,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="key">the key to check</param>
     public static bool KeyUp( Keys key ) {
-        if ( !kStates.ContainsKey( key ) ) return false;
+        RegisterKey( key );
         return kStates[key].IsUp(); ;
     }
 
@@ -563,10 +410,9 @@ public class ExtendedInputV2 {
     /// <param name="keys">the keys to check</param>
     public static bool KeyUp( params Keys[] keys ) {
         foreach ( var key in keys ) {
-            if ( kStates.ContainsKey( key ) ) {
-                if ( kStates[key].IsUp() ) {
-                    return true;
-                }
+            RegisterKey( key );
+            if ( kStates[key].IsUp() ) {
+                return true;
             }
         }
         return false;
@@ -578,11 +424,12 @@ public class ExtendedInputV2 {
     /// <param name="keys">the keys to check</param>
     public static bool KeysUp( params Keys[] keys ) {
         foreach ( var key in keys ) {
-            if ( !kStates.ContainsKey( key ) ) return false;
+            RegisterKey( key );
             if ( !kStates[key].IsUp() ) return false;
         }
         return true;
     }
+    #endregion
 
     public static void SetCurrentWindow( ExtendedWindow window ) {
         currentWindow = window;
