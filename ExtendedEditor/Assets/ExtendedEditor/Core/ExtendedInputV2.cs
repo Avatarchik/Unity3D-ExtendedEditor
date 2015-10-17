@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using TNRD;
 using TNRD.Editor.Core;
@@ -215,11 +216,16 @@ public class ExtendedInputV2 {
     private static extern bool GetCursorPos( out Point lpPoint );
     [DllImport( "user32.dll", CharSet = CharSet.Auto, SetLastError = true )]
     private static extern short GetKeyState( int vKeyCode );
+    [DllImport( "user32.dll", CharSet = CharSet.Auto, SetLastError = true )]
+    private static extern uint GetDoubleClickTime();
 
     private static ExtendedWindow currentWindow = null;
     private static Vector2 mousePosition = new Vector2();
     private static Vector2 mouseOffset = new Vector2();
 
+    /// <summary>
+    /// The current position of the mouse relative to the window
+    /// </summary>
     public static Vector2 MousePosition {
         get {
             if ( currentWindow != null ) {
@@ -251,8 +257,27 @@ public class ExtendedInputV2 {
     private static Dictionary<Keys, State<bool>> kStates = new Dictionary<Keys, State<bool>>();
     private static Dictionary<Buttons, State<bool>> mStates = new Dictionary<Buttons, State<bool>>();
 
+    private static uint doubleClickTime = 5000000;
+    private static long previousTicks = 0;
+    private static bool isDoubleClick = false;
+    /// <summary>
+    /// Did a double click occur
+    /// </summary>
+    public static bool IsDoubleClick {
+        get {
+            if ( consumed ) return false;
+            return isDoubleClick;
+        }
+    }
+
+    private static bool consumed = false;
+
     public static void Hook() {
         if ( !isHooked ) {
+            RegisterButton( Buttons.Left );
+            // Multiplying by 10000 because of datetime ticks
+            doubleClickTime = GetDoubleClickTime() * 10000;
+
             Debug.LogWarning( "Hooking" );
             EditorApplication.update += Update;
             isHooked = true;
@@ -284,7 +309,9 @@ public class ExtendedInputV2 {
             Unhook( true );
             return;
         }
+
         isCompiling = EditorApplication.isCompiling;
+        isDoubleClick = false;
 
         var kCopy = new Dictionary<Keys, State<bool>>( kStates );
         foreach ( var item in kCopy ) {
@@ -298,8 +325,19 @@ public class ExtendedInputV2 {
             var value = mCopy[item.Key];
             // Cheeky cheeky mouse buttons use the same check :o
             value.Update( ( GetKeyState( (int)item.Key ) & 0x8000 ) != 0 );
+
+            if (item.Key == Buttons.Left && value.IsPressed()) {
+                if (DateTime.Now.Ticks - previousTicks <= doubleClickTime ) {
+                    isDoubleClick = true;
+                }
+
+                previousTicks = DateTime.Now.Ticks;
+            }
+
             mStates[item.Key] = value;
         }
+
+        consumed = false;
     }
 
     private static void RegisterKey( Keys key ) {
@@ -314,6 +352,13 @@ public class ExtendedInputV2 {
         }
     }
 
+    /// <summary>
+    /// "Consumes" the event and prevents any other checks to return true
+    /// </summary>
+    public static void Consume() {
+        consumed = true;
+    }
+
     #region Checks
     /// <summary>
     /// Did the given mouse button get pressed this frame
@@ -321,6 +366,7 @@ public class ExtendedInputV2 {
     /// <param name="button">the mouse button to check</param>
     public static bool ButtonPressed( Buttons button ) {
         RegisterButton( button );
+        if ( consumed ) return false;
         return mStates[button].IsPressed();
     }
 
@@ -330,6 +376,7 @@ public class ExtendedInputV2 {
     /// <param name="button">the mouse button to check</param>
     public static bool ButtonReleased( Buttons button ) {
         RegisterButton( button );
+        if ( consumed ) return false;
         return mStates[button].IsReleased();
     }
 
@@ -339,6 +386,7 @@ public class ExtendedInputV2 {
     /// <param name="button">the mouse button to check</param>
     public static bool ButtonDown( Buttons button ) {
         RegisterButton( button );
+        if ( consumed ) return false;
         return mStates[button].IsDown();
     }
 
@@ -348,6 +396,7 @@ public class ExtendedInputV2 {
     /// <param name="button">the mouse button to check</param>
     public static bool ButtonUp( Buttons button ) {
         RegisterButton( button );
+        if ( consumed ) return false;
         return mStates[button].IsUp();
     }
 
@@ -357,6 +406,7 @@ public class ExtendedInputV2 {
     /// <param name="key">the key to check</param>
     public static bool KeyPressed( Keys key ) {
         RegisterKey( key );
+        if ( consumed ) return false;
         return kStates[key].IsPressed();
     }
 
@@ -365,6 +415,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="keys">the keys to check</param>
     public static bool KeyPressed( params Keys[] keys ) {
+        if ( consumed ) return false;
         foreach ( var key in keys ) {
             RegisterKey( key );
             if ( kStates[key].IsPressed() ) {
@@ -379,6 +430,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="keys">the keys to check</param>
     public static bool KeysPressed( params Keys[] keys ) {
+        if ( consumed ) return false;
         foreach ( var key in keys ) {
             RegisterKey( key );
             if ( !kStates[key].IsPressed() ) return false;
@@ -391,6 +443,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="key">the key to check</param>
     public static bool KeyReleased( Keys key ) {
+        if ( consumed ) return false;
         RegisterKey( key );
         return kStates[key].IsReleased();
     }
@@ -400,6 +453,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="keys">the keys to check</param>
     public static bool KeyReleased( params Keys[] keys ) {
+        if ( consumed ) return false;
         foreach ( var key in keys ) {
             RegisterKey( key );
             if ( kStates[key].IsReleased() ) {
@@ -414,6 +468,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="keys">the keys to check</param>
     public static bool KeysReleased( params Keys[] keys ) {
+        if ( consumed ) return false;
         foreach ( var key in keys ) {
             RegisterKey( key );
             if ( !kStates[key].IsReleased() ) return false;
@@ -426,6 +481,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="key">the key to check</param>
     public static bool KeyDown( Keys key ) {
+        if ( consumed ) return false;
         RegisterKey( key );
         return kStates[key].IsDown();
     }
@@ -435,6 +491,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="keys">the keys to check</param>
     public static bool KeyDown( params Keys[] keys ) {
+        if ( consumed ) return false;
         foreach ( var key in keys ) {
             RegisterKey( key );
             if ( kStates[key].IsDown() ) {
@@ -449,6 +506,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="keys">the keys to check</param>
     public static bool KeysDown( params Keys[] keys ) {
+        if ( consumed ) return false;
         foreach ( var key in keys ) {
             RegisterKey( key );
             if ( !kStates[key].IsDown() ) return false;
@@ -461,6 +519,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="key">the key to check</param>
     public static bool KeyUp( Keys key ) {
+        if ( consumed ) return false;
         RegisterKey( key );
         return kStates[key].IsUp(); ;
     }
@@ -470,6 +529,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="keys">the keys to check</param>
     public static bool KeyUp( params Keys[] keys ) {
+        if ( consumed ) return false;
         foreach ( var key in keys ) {
             RegisterKey( key );
             if ( kStates[key].IsUp() ) {
@@ -484,6 +544,7 @@ public class ExtendedInputV2 {
     /// </summary>
     /// <param name="keys">the keys to check</param>
     public static bool KeysUp( params Keys[] keys ) {
+        if ( consumed ) return false;
         foreach ( var key in keys ) {
             RegisterKey( key );
             if ( !kStates[key].IsUp() ) return false;
